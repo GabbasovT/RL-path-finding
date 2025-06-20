@@ -2,11 +2,12 @@
 
 namespace project::common {
 
-    enum class EnvState {
-    Normal,
-    Terminal,
-    Timeout,
-    Error
-    };
+enum class EnvState {
+NONE,
+TERMINAL,
+COLLISION,
+TIMEOUT,
+ERROR
+};
 
 }
