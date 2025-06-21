@@ -44,6 +44,8 @@ public:
 class Goal : public Box {
 public:
     std::pair<float, float> get_dir(float o_x, float o_y);
+    Goal(float x, float y, float w, float h)
+        : Box(x, y, w, h) {}
     float Goal::get_dist(float o_x, float o_y);
 };
 
@@ -63,7 +65,7 @@ public:
         float bord_x0, float bord_y0, float bord_x1, float bord_y1);
 
     project::common::State do_action(project::common::Action action);
-    void reset();
+    common::State reset();
 };
 
 }

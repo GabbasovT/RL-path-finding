@@ -1,4 +1,7 @@
 #include "ml/RL.hpp"
+#include <torch/script.h>
+#include <algorithm>
+#include <numeric>
 
 namespace rl {
 
@@ -11,36 +14,52 @@ void ReplayBuffer::push(const Transition& t) {
 
 std::vector<Transition> ReplayBuffer::sample(size_t batch_size) {
     std::vector<Transition> batch;
-    std::uniform_int_distribution<> dist(0, buffer.size() - 1);
-    for (size_t i = 0; i < batch_size; ++i) {
-        batch.push_back(buffer[dist(rng)]);
-    }
+    std::shuffle(buffer.begin(), buffer.end(), rng);
+    batch_size = std::min(batch_size, buffer.size());
+    batch.assign(buffer.begin(), buffer.begin() + batch_size);
     return batch;
 }
 
-size_t ReplayBuffer::size() const {
-    return buffer.size();
-}
+size_t ReplayBuffer::size() const { return buffer.size(); }
 
-ActorNetImpl::ActorNetImpl()
-    : fc1(OBS_SIZE, 128), fc2(128, 128), fc3(128, ACT_SIZE) {
+// Actor Network
+ActorNetImpl::ActorNetImpl() : fc1(TOTAL_OBS_SIZE, 256), fc2(256, 256), fc3(256, ACT_SIZE) {
     register_module("fc1", fc1);
     register_module("fc2", fc2);
     register_module("fc3", fc3);
+
+    torch::nn::init::xavier_uniform_(fc1->weight);
+    torch::nn::init::constant_(fc1->bias, 0.1);
+    torch::nn::init::xavier_uniform_(fc2->weight);
+    torch::nn::init::constant_(fc2->bias, 0.1);
+    torch::nn::init::xavier_uniform_(fc3->weight);
+    torch::nn::init::constant_(fc3->bias, 0.1);
 }
 
 torch::Tensor ActorNetImpl::forward(torch::Tensor x) {
     x = torch::relu(fc1->forward(x));
     x = torch::relu(fc2->forward(x));
-    x = torch::tanh(fc3->forward(x));
-    return x;
+    return torch::tanh(fc3->forward(x));
 }
 
-CriticNetImpl::CriticNetImpl()
-    : fc1(OBS_SIZE + ACT_SIZE, 128), fc2(128, 128), fc3(128, 1) {
+void ActorNetImpl::copy_weights(const ActorNetImpl& source) {
+    for (const auto& p : named_parameters()) {
+        p.value().copy_(source.named_parameters()[p.key()]);
+    }
+}
+
+// Critic Network
+CriticNetImpl::CriticNetImpl() : fc1(TOTAL_OBS_SIZE + ACT_SIZE, 256), fc2(256, 256), fc3(256, 1) {
     register_module("fc1", fc1);
     register_module("fc2", fc2);
     register_module("fc3", fc3);
+
+    torch::nn::init::xavier_uniform_(fc1->weight);
+    torch::nn::init::constant_(fc1->bias, 0.1);
+    torch::nn::init::xavier_uniform_(fc2->weight);
+    torch::nn::init::constant_(fc2->bias, 0.1);
+    torch::nn::init::xavier_uniform_(fc3->weight);
+    torch::nn::init::constant_(fc3->bias, 0.1);
 }
 
 torch::Tensor CriticNetImpl::forward(torch::Tensor state, torch::Tensor action) {
@@ -50,7 +69,14 @@ torch::Tensor CriticNetImpl::forward(torch::Tensor state, torch::Tensor action) 
     return fc3->forward(x);
 }
 
-TD3Agent::TD3Agent(float actor_lr, float critic_lr, float gamma, float tau)
+void CriticNetImpl::copy_weights(const CriticNetImpl& source) {
+    for (const auto& p : named_parameters()) {
+        p.value().copy_(source.named_parameters()[p.key()]);
+    }
+}
+
+// TD3 Agent
+TD3Agent::TD3Agent(float actor_lr, float critic_lr, float gamma_, float tau_, float max_distance_)
     : actor(std::make_shared<ActorNetImpl>()),
       actor_target(std::make_shared<ActorNetImpl>()),
       critic1(std::make_shared<CriticNetImpl>()),
@@ -60,81 +86,105 @@ TD3Agent::TD3Agent(float actor_lr, float critic_lr, float gamma, float tau)
       actor_optimizer(actor->parameters(), actor_lr),
       critic1_optimizer(critic1->parameters(), critic_lr),
       critic2_optimizer(critic2->parameters(), critic_lr),
-      gamma(gamma), tau(tau) {
-    actor_target->load_state_dict(actor->state_dict());
-    critic1_target->load_state_dict(critic1->state_dict());
-    critic2_target->load_state_dict(critic2->state_dict());
+      gamma(gamma_), tau(tau_), max_distance(max_distance_) {
+
+    actor_target->copy_weights(*actor);
+    critic1_target->copy_weights(*critic1);
+    critic2_target->copy_weights(*critic2);
+}
+
+torch::Tensor TD3Agent::preprocess_state(const project::common::State& state) {
+    std::vector<float> obs_data;
+    obs_data.reserve(TOTAL_OBS_SIZE);
+
+    // Основные наблюдения (лучи)
+    obs_data.insert(obs_data.end(), state.obs.begin(), state.obs.end());
+
+    // Направление к цели (нормализованный вектор)
+    obs_data.push_back(state.direction_to_goal.first);
+    obs_data.push_back(state.direction_to_goal.second);
+
+    // Нормализованная дистанция [0, 1]
+    obs_data.push_back(state.distance_to_goal / max_distance);
+
+    return torch::from_blob(obs_data.data(), {1, TOTAL_OBS_SIZE}, torch::kFloat32).clone();
 }
 
 std::pair<torch::Tensor, torch::Tensor> TD3Agent::select_action(torch::Tensor state, float noise_std) {
     actor->eval();
+    torch::NoGradGuard no_grad;
     auto action = actor->forward(state);
+
     if (noise_std > 0.0f) {
-        action += torch::normal(0.0, noise_std, action.sizes());
-        action = torch::clamp(action, -1.0, 1.0);
+        auto noise = torch::randn_like(action) * noise_std;
+        noise = noise.clamp(-0.5f, 0.5f);
+        action = (action + noise).clamp(-1.0f, 1.0f);
     }
+
     actor->train();
     return {action, action.norm(2, 1, true)};
 }
 
+void TD3Agent::soft_update(torch::nn::Module& target, const torch::nn::Module& source) {
+    for (const auto& tp : target.named_parameters()) {
+        const auto& sp = source.named_parameters()[tp.key()];
+        tp.value().data().mul_(1.0f - tau).add_(sp.data(), tau);
+    }
+}
+
 void TD3Agent::update(ReplayBuffer& buffer, int batch_size) {
     if (buffer.size() < batch_size) return;
+
     auto batch = buffer.sample(batch_size);
 
-    std::vector<torch::Tensor> states, actions, rewards, next_states, dones;
-    for (auto& t : batch) {
-        states.push_back(t.state);
-        actions.push_back(t.action);
-        rewards.push_back(t.reward);
-        next_states.push_back(t.next_state);
-        dones.push_back(t.done);
-    }
+    // Подготовка батча
+    auto state_batch = torch::cat(batch | std::views::transform([](const Transition& t) { return t.state; })).squeeze(1);
+    auto action_batch = torch::cat(batch | std::views::transform([](const Transition& t) { return t.action; })).squeeze(1);
+    auto reward_batch = torch::cat(batch | std::views::transform([](const Transition& t) { return t.reward; })).squeeze(1);
+    auto next_state_batch = torch::cat(batch | std::views::transform([](const Transition& t) { return t.next_state; })).squeeze(1);
+    auto done_batch = torch::cat(batch | std::views::transform([](const Transition& t) { return t.done; })).squeeze(1);
 
-    auto state_batch = torch::stack(states);
-    auto action_batch = torch::stack(actions);
-    auto reward_batch = torch::stack(rewards);
-    auto next_state_batch = torch::stack(next_states);
-    auto done_batch = torch::stack(dones);
+    // Обновление критиков
+    torch::Tensor next_action_noise = torch::randn_like(action_batch) * 0.2f;
+    next_action_noise = next_action_noise.clamp(-0.5f, 0.5f);
 
-    auto next_action = actor_target->forward(next_state_batch);
-    next_action += torch::normal(0.0, 0.2, next_action.sizes()).clamp(-0.5, 0.5);
-    next_action = torch::clamp(next_action, -1.0, 1.0);
+    auto next_actions = actor_target->forward(next_state_batch) + next_action_noise;
+    next_actions = next_actions.clamp(-1.0f, 1.0f);
 
-    auto target_q1 = critic1_target->forward(next_state_batch, next_action);
-    auto target_q2 = critic2_target->forward(next_state_batch, next_action);
+    auto target_q1 = critic1_target->forward(next_state_batch, next_actions);
+    auto target_q2 = critic2_target->forward(next_state_batch, next_actions);
     auto target_q = torch::min(target_q1, target_q2);
-    auto y = reward_batch + gamma * (1 - done_batch) * target_q;
+    auto target_value = reward_batch + gamma * (1.0f - done_batch) * target_q.squeeze();
 
-    auto q1 = critic1->forward(state_batch, action_batch);
-    auto q2 = critic2->forward(state_batch, action_batch);
-    auto critic1_loss = torch::mse_loss(q1, y.detach());
-    auto critic2_loss = torch::mse_loss(q2, y.detach());
+    auto current_q1 = critic1->forward(state_batch, action_batch).squeeze();
+    auto current_q2 = critic2->forward(state_batch, action_batch).squeeze();
+
+    auto critic1_loss = torch::mse_loss(current_q1, target_value.detach());
+    auto critic2_loss = torch::mse_loss(current_q2, target_value.detach());
 
     critic1_optimizer.zero_grad();
     critic1_loss.backward();
+    torch::nn::utils::clip_grad_norm_(critic1->parameters(), 1.0);
     critic1_optimizer.step();
 
     critic2_optimizer.zero_grad();
     critic2_loss.backward();
+    torch::nn::utils::clip_grad_norm_(critic2->parameters(), 1.0);
     critic2_optimizer.step();
 
+    // Обновление актора (с задержкой)
     if (++update_step % policy_delay == 0) {
         auto actor_loss = -critic1->forward(state_batch, actor->forward(state_batch)).mean();
+
         actor_optimizer.zero_grad();
         actor_loss.backward();
+        torch::nn::utils::clip_grad_norm_(actor->parameters(), 1.0);
         actor_optimizer.step();
 
-        for (auto& [targ, src] : {
-            std::pair<torch::nn::ModulePtr, torch::nn::ModulePtr>{actor_target, actor},
-            {critic1_target, critic1}, {critic2_target, critic2}
-        }) {
-            auto targ_params = targ->named_parameters(true);
-            auto src_params = src->named_parameters(true);
-            for (auto& kv : targ_params) {
-                kv.value().mul_(1 - tau).add_(src_params[kv.key()], tau);
-            }
-        }
+        // Мягкое обновление целевых сетей
+        soft_update(*actor_target, *actor);
+        soft_update(*critic1_target, *critic1);
+        soft_update(*critic2_target, *critic2);
     }
 }
-
 }

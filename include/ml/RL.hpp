@@ -5,13 +5,14 @@
 #include <vector>
 #include <random>
 #include <utility>
-#include "Enums.hpp"
 #include "Consts.hpp"
-#include "Environment.hpp"
+#include "Enums.hpp"
+#include "environment/Env.hpp"
 
 namespace rl {
-
-    constexpr int OBS_SIZE = project::common::SIZE_OF_ARRAY_OF_OBSERVATIONS;
+    constexpr int BASE_OBS_SIZE = project::common::SIZE_OF_ARRAY_OF_OBSERVATIONS;
+    constexpr int EXTRA_OBS_SIZE = 3; // direction_to_goal (2) + distance_to_goal (1)
+    constexpr int TOTAL_OBS_SIZE = BASE_OBS_SIZE + EXTRA_OBS_SIZE;
     constexpr int ACT_SIZE = 2;
 
     struct Transition {
@@ -39,6 +40,7 @@ namespace rl {
         torch::nn::Linear fc1, fc2, fc3;
         ActorNetImpl();
         torch::Tensor forward(torch::Tensor x);
+        void copy_weights(const ActorNetImpl& source);
     };
     TORCH_MODULE(ActorNet);
 
@@ -46,16 +48,19 @@ namespace rl {
         torch::nn::Linear fc1, fc2, fc3;
         CriticNetImpl();
         torch::Tensor forward(torch::Tensor state, torch::Tensor action);
+        void copy_weights(const CriticNetImpl& source);
     };
     TORCH_MODULE(CriticNet);
 
     class TD3Agent {
     public:
-        TD3Agent(float actor_lr, float critic_lr, float gamma, float tau);
+        TD3Agent(float actor_lr, float critic_lr, float gamma, float tau, float max_distance);
         std::pair<torch::Tensor, torch::Tensor> select_action(torch::Tensor state, float noise_std = 0.1f);
         void update(ReplayBuffer& buffer, int batch_size);
+        torch::Tensor preprocess_state(const project::common::State& state);
 
         ActorNet actor;
+        float max_distance;
 
     private:
         ActorNet actor_target;
@@ -70,6 +75,7 @@ namespace rl {
         float tau;
         int policy_delay = 2;
         int update_step = 0;
-    };
 
+        void soft_update(torch::nn::Module& target, const torch::nn::Module& source);
+    };
 }

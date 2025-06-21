@@ -4,7 +4,7 @@
 #include <array>
 #include <vector>
 #include <cmath>
-#include "src/common/Consts.hpp"
+#include "Consts.hpp"
 
 namespace project::env{
 
@@ -167,12 +167,16 @@ Environment::Environment(std::vector<Object> objects_, Goal goal, Agent agent,
                         ));
 }
 
-void Environment::reset() {
+common::State Environment::reset() {
     this->cur = this->backup;
+    common::Action start;
+    start.dir = {0.0, 0.0};
+    start.len = 0.0;
+    return do_action(start);
 }
 
-project::common::State Environment::do_action(project::common::Action action) {
-    project::common::State st;
+common::State Environment::do_action(common::Action action) {
+    common::State st;
     cur.agent.shift(action.dir.first * action.len, action.dir.second * action.len);
     st.obs = cur.agent.launch_rays(cur.objects_);
     std::pair<float, float> a_xy = cur.agent.get_coords();
@@ -180,15 +184,16 @@ project::common::State Environment::do_action(project::common::Action action) {
     st.distance_to_goal = cur.goal.get_dist(a_xy.first, a_xy.second);
     for (Object &o : cur.objects_) {
         if (o.check_colision(a_xy.first, a_xy.second)) {
-            st.env_type = project::common::EnvState::COLLISION;
-            return;
+            st.env_type = common::EnvState::COLLISION;
+            return st;
         }
     }
     if (cur.goal.check_colision(a_xy.first, a_xy.second)) {
-        st.env_type = project::common::EnvState::TERMINAL;
-        return;
+        st.env_type = common::EnvState::TERMINAL;
+        return st;
     }
-    st.env_type = project::common::EnvState::NONE;
+    st.env_type = common::EnvState::NONE;
+    return st;
 }
 
 }
