@@ -8,6 +8,8 @@ namespace project::common {
 
 struct State {
     std::array<float, SIZE_OF_ARRAY_OF_OBSERVATIONS> obs;
+    std::pair<float, float> direction_to_goal; 
+    float distance_to_goal;
     EnvState env_type;
 };
 
