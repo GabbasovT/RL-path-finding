@@ -42,6 +42,8 @@ namespace project::env{
         float w, h;
     public:
         Box(float x, float y, float w, float h);
+        std::pair<float, float> get_left_top();
+        std::pair<float, float> get_w_h();
         bool check_colision(float o_x, float o_y) override;
         float get_intersect(float o_x, float o_y, std::pair<float, float> n_ray) override;
     };
