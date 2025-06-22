@@ -27,12 +27,14 @@ ActorNetImpl::ActorNetImpl() :
     fc1(TOTAL_OBS_SIZE, 512),
     fc2(512, 512),
     fc3(512, 256),
-    fc4(256, ACT_SIZE) {
+    fc4(256, 128),
+    fc5(128, ACT_SIZE) {
 
     register_module("fc1", fc1);
     register_module("fc2", fc2);
     register_module("fc3", fc3);
     register_module("fc4", fc4);
+    register_module("fc5", fc5);
 
     torch::nn::init::orthogonal_(fc1->weight, 0.1);
     torch::nn::init::constant_(fc1->bias, 0.0);
@@ -40,15 +42,18 @@ ActorNetImpl::ActorNetImpl() :
     torch::nn::init::constant_(fc2->bias, 0.0);
     torch::nn::init::orthogonal_(fc3->weight, 0.1);
     torch::nn::init::constant_(fc3->bias, 0.0);
-    torch::nn::init::orthogonal_(fc4->weight, 0.01);
+    torch::nn::init::orthogonal_(fc4->weight, 0.1);
     torch::nn::init::constant_(fc4->bias, 0.0);
+    torch::nn::init::orthogonal_(fc5->weight, 0.01);
+    torch::nn::init::constant_(fc5->bias, 0.0);
 }
 
 torch::Tensor ActorNetImpl::forward(torch::Tensor x) {
     x = torch::relu(fc1->forward(x));
     x = torch::relu(fc2->forward(x));
     x = torch::relu(fc3->forward(x));
-    return torch::tanh(fc4->forward(x));
+    x = torch::relu(fc4->forward(x));
+    return torch::tanh(fc5->forward(x));
 }
 
 void ActorNetImpl::copy_weights(const ActorNetImpl& source) {
@@ -62,12 +67,14 @@ CriticNetImpl::CriticNetImpl() :
     fc1(TOTAL_OBS_SIZE + ACT_SIZE, 512),
     fc2(512, 512),
     fc3(512, 256),
-    fc4(256, 1) {
+    fc4(256, 128),
+    fc5(128, 1) {
 
     register_module("fc1", fc1);
     register_module("fc2", fc2);
     register_module("fc3", fc3);
     register_module("fc4", fc4);
+    register_module("fc5", fc5);
 
     torch::nn::init::orthogonal_(fc1->weight, 0.1);
     torch::nn::init::constant_(fc1->bias, 0.0);
@@ -75,8 +82,10 @@ CriticNetImpl::CriticNetImpl() :
     torch::nn::init::constant_(fc2->bias, 0.0);
     torch::nn::init::orthogonal_(fc3->weight, 0.1);
     torch::nn::init::constant_(fc3->bias, 0.0);
-    torch::nn::init::orthogonal_(fc4->weight, 0.01);
+    torch::nn::init::orthogonal_(fc4->weight, 0.1);
     torch::nn::init::constant_(fc4->bias, 0.0);
+    torch::nn::init::orthogonal_(fc5->weight, 0.01);
+    torch::nn::init::constant_(fc5->bias, 0.0);
 }
 
 torch::Tensor CriticNetImpl::forward(torch::Tensor state, torch::Tensor action) {
@@ -84,7 +93,8 @@ torch::Tensor CriticNetImpl::forward(torch::Tensor state, torch::Tensor action) 
     x = torch::relu(fc1->forward(x));
     x = torch::relu(fc2->forward(x));
     x = torch::relu(fc3->forward(x));
-    return fc4->forward(x);
+    x = torch::relu(fc4->forward(x));
+    return fc5->forward(x);
 }
 
 void CriticNetImpl::copy_weights(const CriticNetImpl& source) {

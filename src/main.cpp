@@ -55,7 +55,7 @@ int main() {
 
     for (int ep = 0; ep < EPISODES; ++ep) {
         State s = env.reset();
-        manager = project::ren::DynamicRectangles(env);
+        manager = project::ren::DynamicRectangles(env, true);
         auto state = agent.preprocess_state(s);
         float ep_reward = 0.0f;
         bool episode_success = false;
@@ -111,6 +111,8 @@ int main() {
                 default:
                     float progress = (s.distance_to_goal - s2.distance_to_goal) / MAX_DISTANCE;
                     reward += 30.0f * progress;
+                    if (progress > 0.0f) reward += MAX_DISTANCE *
+                        (1.0f / s2.distance_to_goal - 1.0f / s.distance_to_goal);
             }
 
             buffer.push({

@@ -95,7 +95,24 @@ float Box::get_intersect(float o_x, float o_y, std::pair<float, float> n_ray) {
     float y = get_coords().second;
     if (std::abs(n_ray.second) <= 0.000001) {
         if (std::abs(o_y - y) < h/2) {
-            return std::min(std::abs(o_x - (x - w/2)), std::abs(o_x - (x + w/2)));
+            float res = INFINITY;
+            float t;
+            if (std::signbit(x - o_x) == std::signbit(n_ray.first)) {
+                t = std::abs(o_x - (x - w/2));
+                if (res > t) {
+                    res = t;
+                }
+            }
+            if (std::signbit(x - o_x) == std::signbit(n_ray.first)) {
+                t = std::abs(o_x - (x + w/2));
+                if (res > t) {
+                    res = t;
+                }
+            }
+            if (res >= INFINITY - 1) {
+                return -1;
+            }
+            return res;
         } else {
             return -1;
         }
@@ -211,7 +228,7 @@ common::State Environment::reset() {
     return do_action(start);
 }
 
-common::State Environment::do_action(common::Action action) const {
+common::State Environment::do_action(common::Action action) {
     common::State st;
     cur.agent.shift(action.dir.first * action.len, action.dir.second * action.len);
     st.obs = cur.agent.launch_rays(cur.objects_, st.obs_intersect);

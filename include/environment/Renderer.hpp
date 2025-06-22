@@ -16,14 +16,14 @@ class DynamicRectangles {
     std::vector<sf::VertexArray> staticRects_;
     std::vector<sf::VertexArray> agentRects_;
     std::vector<sf::VertexArray> dynamicRects_;
-
     void addRectangle(const sf::FloatRect& rect, const sf::Color& color, std::vector<sf::VertexArray>& target);
     void addStaticRect(const sf::FloatRect& rect, const sf::Color& color);
+    void addAgentRect(const sf::FloatRect& rect, const sf::Color& color);
     void addDynamicRect(const sf::FloatRect& rect, const sf::Color& color);
 public:
-    DynamicRectangles(project::env::Environment& env, bool addInters) const;
-    void updateAgent(project::env::Agent* agent) const;
-    void DynamicRectangles::updateInters(project::env::State* state) const;
+    DynamicRectangles(project::env::Environment& env, bool addInters);
+    void updateAgent(project::env::Agent* agent);
+    void updateInters(project::common::State* state);
     void draw(sf::RenderTarget& target) const;
 };
 
