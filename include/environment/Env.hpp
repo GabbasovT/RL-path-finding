@@ -13,6 +13,8 @@ namespace project::env{
 
     class Object;
 
+    class Box;
+
     class Agent {
         float x, y;
         std::array<std::pair<float, float>, common::SIZE_OF_ARRAY_OF_OBSERVATIONS> rdrs;
@@ -22,7 +24,7 @@ namespace project::env{
         Agent(float x, float y);
         void shift(float u, float v);
         std::pair<float, float> get_coords();
-        std::array<float, common::SIZE_OF_ARRAY_OF_OBSERVATIONS> launch_rays(std::vector<Object>& objects_);
+        std::array<float, common::SIZE_OF_ARRAY_OF_OBSERVATIONS> launch_rays(std::vector<Box>& objects_);
     };
 
     class Object {
@@ -54,7 +56,7 @@ namespace project::env{
 
     class Environment {
         struct Data{
-            std::vector<Object> objects_;
+            std::vector<Box> objects_;
             Goal goal;
             Agent agent;
             float bord_x0, bord_y0;
@@ -64,7 +66,7 @@ namespace project::env{
         Data cur;
         Data backup;
     public:
-        Environment(std::vector<Object> objects_, Goal goal, Agent agent,
+        Environment(std::vector<Box> objects_, Goal goal, Agent agent,
             float bord_x0, float bord_y0, float bord_x1, float bord_y1);
 
         common::State do_action(common::Action action);

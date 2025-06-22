@@ -21,9 +21,10 @@ Agent::Agent(float x, float y) {
     this->y = y;
 
     float phi = 2 * acos(-1) / rdrs.size();
+    float theta = 0.0;
     for (int i = 0; i < rdrs.size(); i++) {
-        rdrs[i] = {cos(phi), sin(phi)};
-        phi += phi;
+        rdrs[i] = {cos(theta), sin(theta)};
+        theta += phi;
     }
 }
 void Agent::shift(float u, float v) {
@@ -33,14 +34,14 @@ void Agent::shift(float u, float v) {
 std::pair<float, float> Agent::get_coords() {
     return {this->x, this->y};
 }
-std::array<float, common::SIZE_OF_ARRAY_OF_OBSERVATIONS> Agent::launch_rays(std::vector<Object> &objects_) {
+std::array<float, common::SIZE_OF_ARRAY_OF_OBSERVATIONS> Agent::launch_rays(std::vector<Box> &objects_) {
     std::array<float, common::SIZE_OF_ARRAY_OF_OBSERVATIONS> res;
     for (int i = 0; i < res.size(); i++) {
         res[i] = 0;
     }
     for (int i = 0; i < rdrs.size(); i++) {
         float d = INFINITY;
-        for (Object &o : objects_) {
+        for (Box &o : objects_) {
             float t = o.get_intersect(x, y, rdrs[i]);
             if (t < 0) {
                 continue;
@@ -140,7 +141,7 @@ float Goal::get_dist(float o_x, float o_y) {
     return norm;
 }
 
-Environment::Environment(std::vector<Object> objects_, Goal goal, Agent agent,
+Environment::Environment(std::vector<Box> objects_, Goal goal, Agent agent,
         float bord_x0, float bord_y0, float bord_x1, float bord_y1) :
         cur{
             std::move(objects_),

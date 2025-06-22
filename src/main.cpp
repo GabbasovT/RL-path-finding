@@ -28,7 +28,7 @@ int main() {
     project::env::Agent init_agent(WORLD_WIDTH/2, WORLD_HEIGHT/2);
     project::env::Goal goal(10.0f, 10.0f, 5.0f, 5.0f); // x, y, w, h
 
-    std::vector<project::env::Object> obstacles = {
+    std::vector<project::env::Box> obstacles = {
         project::env::Box(30.0f, 30.0f, 10.0f, 10.0f),
         project::env::Box(70.0f, 70.0f, 15.0f, 15.0f)
     };
@@ -66,8 +66,10 @@ int main() {
             Action action{{action_data[0], action_data[1]}, 1.0f};
 
             // Шаг среды
-            std::cout << "action dir:" <<  action.dir.first << " " << action.dir.second << std::endl;
             State s2 = env.do_action(action);
+            if (s2.env_type == EnvState::TERMINAL) {
+                std::cout << t << " " << s2.distance_to_goal << " " << s2.direction_to_goal.first << " " << s2.direction_to_goal.second << std::endl;
+            }
             auto next_state = agent.preprocess_state(s2);
 
             // Награда
