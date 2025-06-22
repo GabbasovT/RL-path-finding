@@ -71,6 +71,14 @@ Box::Box(float x, float y, float w, float h) {
     this->w = w;
     this->h = h;
 }
+std::pair<float, float> Box::get_left_top() {
+    float x = get_coords().first;
+    float y = get_coords().second;
+    return {x - w/2, y + h/2};
+}
+std::pair<float, float> Box::get_w_h() {
+    return {w, h};
+}
 bool Box::check_colision(float o_x, float o_y) {
     float x = get_coords().first;
     float y = get_coords().second;
