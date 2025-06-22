@@ -71,10 +71,10 @@ Box::Box(float x, float y, float w, float h) {
     this->w = w;
     this->h = h;
 }
-std::pair<float, float> Box::get_left_top() {
+std::pair<float, float> Box::get_right_bottom() {
     float x = get_coords().first;
     float y = get_coords().second;
-    return {x - w/2, y + h/2};
+    return {x + w/2, y - h/2};
 }
 std::pair<float, float> Box::get_w_h() {
     return {w, h};

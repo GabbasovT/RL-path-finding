@@ -36,12 +36,12 @@ DynamicRectangles::DynamicRectangles(project::env::Environment &env) {
     background_.setSize({width_, height_});
 
     for (env::Box o : *env.get_objects()) {
-        std::pair<float, float> corn = o.get_left_top();
+        std::pair<float, float> corn = o.get_right_bottom();
         std::pair<float, float> w_h = o.get_w_h();
         addStaticRect({corn.first, corn.second, w_h.first, w_h.second}, sf::Color::Blue);
     }
 
-    std::pair<float, float> g_corn = env.get_goal()->get_left_top();
+    std::pair<float, float> g_corn = env.get_goal()->get_right_bottom();
     std::pair<float, float> g_w_h = env.get_goal()->get_w_h();
     addStaticRect({g_corn.first, g_corn.second, g_w_h.first, g_w_h.second}, sf::Color::Yellow);
     addDynamicRect({env.get_agent()->get_coords().first - 1, env.get_agent()->get_coords().second + 1, 2, 2}, sf::Color::Green);
