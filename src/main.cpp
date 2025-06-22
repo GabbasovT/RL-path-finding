@@ -18,9 +18,9 @@ int main() {
     const float MAX_DISTANCE = std::sqrt(WORLD_WIDTH * WORLD_WIDTH + WORLD_HEIGHT * WORLD_HEIGHT);
 
     // Параметры обучения
-    const int EPISODES = 1000;
-    const int MAX_STEPS = 500;
-    const int BATCH_SIZE = 128;
+    const int EPISODES = 5000;
+    const int MAX_STEPS = 1000;
+    const int BATCH_SIZE = 512;
     const int LOG_INTERVAL = 50;
     const float ACTOR_LR = 3e-4;
     const float CRITIC_LR = 3e-4;
@@ -65,7 +65,7 @@ int main() {
         float ep_reward = 0.0f;
         bool episode_success = false;
 
-        float noise_std = std::max(0.05f, 0.3f * (1.0f - ep / float(EPISODES)));
+        float noise_std = std::max(0.05f, 0.5f * (1.0f - ep / float(EPISODES)));
 
         for (int t = 0; t < MAX_STEPS; ++t) {
             auto [action_tensor, _] = agent.select_action(state, noise_std);
