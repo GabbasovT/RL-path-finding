@@ -1,8 +1,8 @@
-#pragma once
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include "Env.hpp"
 
+namespace project::ren{
 
 void DynamicRectangles::addRectangle(const sf::FloatRect& rect, const sf::Color& color, std::vector<sf::VertexArray>& target) {
     sf::VertexArray va(sf::Quads, 4);
@@ -27,26 +27,37 @@ void DynamicRectangles::addDynamicRect(const sf::FloatRect& rect, const sf::Colo
     addRectangle(rect, color, dynamicRects_);
 }
 
-DynamicRectangles::DynamicRectangles(float w, float h, std::vector<project::env::Box> &objects_, env::Goal &goal, env::Agent &agent) : width_(w), height_(h){
+DynamicRectangles::DynamicRectangles(project::env::Environment &env) {
+    width_ = env.get_w_h().first;
+    height_ = env.get_w_h().second;
+
     background_.setFillColor(sf::Color::White);
     background_.setSize({width_, height_});
-    for (project::env::Box o : objects_) {
+
+    for (project::env::Box o : env.get_objects()) {
         std::pair<float, float> corn = o.get_left_top();
         std::pair<float, float> w_h = o.get_w_h();
-        addStaticRect({corn.first, corn.second, w_h.first, w_h.second}, sf::Color::Grey);
+        addStaticRect({corn.first, corn.second, w_h.first, w_h.second}, sf::Color::Blue);
     }
-    std::pair<float, float> g_corn = goal.get_left_top();
-    std::pair<float, float> g_w_h = goal.get_w_h();
+
+    std::pair<float, float> g_corn = env.get_goal().get_left_top();
+    std::pair<float, float> g_w_h = env.get_goal().get_w_h();
     addStaticRect({g_corn.first, g_corn.second, g_w_h.first, g_w_h.second}, sf::Color::Yellow);
-    addDynamicRect({agent.get_coords().first - 1, agent.get_coords().second + 1, 2, 2}, sf::Color::Green);
+    addDynamicRect({env.get_agent().get_coords().first - 1, env.get_agent().get_coords().second + 1, 2, 2}, sf::Color::Green);
 }
 
-void DynamicRectangles::shiftDinamic(float shift) {
-    for (auto &e : dynamicRects_) {
-        for (int i = 0; i < 4; i++) {
-            e[i].position.x += shift;
-        }
-    }
+void DynamicRectangles::updateAgent(project::env::Agent& agent) {
+    float n_x = agent.get_coords().first;
+    float n_y = agent.get_coords().second;
+
+    DynamicRectangles[0][0].position.x = n_x - 1;
+    DynamicRectangles[0][0].position.y = n_y + 1;
+    DynamicRectangles[0][1].position.x = n_x + 1;
+    DynamicRectangles[0][1].position.y = n_y + 1;
+    DynamicRectangles[0][2].position.x = n_x + 1;
+    DynamicRectangles[0][2].position.y = n_y - 1;
+    DynamicRectangles[0][3].position.x = n_x - 1;
+    DynamicRectangles[0][3].position.y = n_y - 1;
 }
 
 void DynamicRectangles::draw(sf::RenderTarget& target) const {
@@ -59,4 +70,6 @@ void DynamicRectangles::draw(sf::RenderTarget& target) const {
     for (const auto& va : dynamicRects_) {
         target.draw(va);
     }
+}
+
 }

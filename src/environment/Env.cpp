@@ -177,6 +177,19 @@ Environment::Environment(std::vector<Box> objects_, Goal goal, Agent agent,
                             std::abs(bord_y0 - bord_y1) * 1.1
                         ));
     backup = cur;
+}   
+
+Goal* Environment::get_goal() {
+    return &cur.goal;
+}
+Agent* Environment::get_agent() {
+    return &cur.agent;
+}
+std::vector<Box>* Environment::get_objects() {
+    return &cur.objects_;
+}
+std::pair<float, float> Environment::get_w_h() {
+    return {cur.bord_x1 - cur.bord_x1, cur.bord_y1 - cur.bord_y0};
 }
 
 common::State Environment::reset() {

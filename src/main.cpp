@@ -44,6 +44,9 @@ int main() {
         WORLD_WIDTH, WORLD_HEIGHT
     );
 
+    sf::RenderWindow window(sf::VideoMode(WORLD_WIDTH, WORLD_HEIGHT), "Dynamic Rectangles");
+    project::ren::DynamicRectangles manager(env);
+
     // Инициализация агента
     TD3Agent agent(ACTOR_LR, CRITIC_LR, GAMMA, TAU, MAX_DISTANCE);
     ReplayBuffer buffer(100000);
@@ -55,6 +58,7 @@ int main() {
 
     for (int ep = 0; ep < EPISODES; ++ep) {
         State s = env.reset();
+        manager = project::ren::DynamicRectangles(env);
         auto state = agent.preprocess_state(s);
         float ep_reward = 0.0f;
         bool episode_success = false;
@@ -67,6 +71,19 @@ int main() {
             Action action{{action_data[0], action_data[1]}, 1.0f};
 
             State s2 = env.do_action(action);
+            if (window.isOpen()) {
+                sf::Event event;
+                while (window.pollEvent(event)) {
+                    if (event.type == sf::Event::Closed)
+                        window.close();
+                }
+                
+                manager.updateAgent(env.get_agent());
+
+                window.clear();
+                manager.draw(window);
+                window.display();
+            }
             auto next_state = agent.preprocess_state(s2);
 
             // --- SHAPING REWARD ---
