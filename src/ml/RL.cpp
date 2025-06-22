@@ -2,9 +2,11 @@
 #include <torch/script.h>
 #include <algorithm>
 #include <numeric>
+#include <ranges>
 
 namespace rl {
 
+// ReplayBuffer
 ReplayBuffer::ReplayBuffer(size_t capacity) : capacity_(capacity), rng(std::random_device{}()) {}
 
 void ReplayBuffer::push(const Transition& t) {
@@ -43,6 +45,7 @@ torch::Tensor ActorNetImpl::forward(torch::Tensor x) {
 }
 
 void ActorNetImpl::copy_weights(const ActorNetImpl& source) {
+    torch::NoGradGuard no_grad;  // Отключаем градиенты при копировании весов
     for (const auto& p : named_parameters()) {
         p.value().copy_(source.named_parameters()[p.key()]);
     }
@@ -70,6 +73,7 @@ torch::Tensor CriticNetImpl::forward(torch::Tensor state, torch::Tensor action) 
 }
 
 void CriticNetImpl::copy_weights(const CriticNetImpl& source) {
+    torch::NoGradGuard no_grad;  // Отключаем градиенты при копировании весов
     for (const auto& p : named_parameters()) {
         p.value().copy_(source.named_parameters()[p.key()]);
     }
@@ -86,7 +90,7 @@ TD3Agent::TD3Agent(float actor_lr, float critic_lr, float gamma_, float tau_, fl
       actor_optimizer(actor->parameters(), actor_lr),
       critic1_optimizer(critic1->parameters(), critic_lr),
       critic2_optimizer(critic2->parameters(), critic_lr),
-      gamma(gamma_), tau(tau_), max_distance(max_distance_) {
+      gamma(gamma_), tau(tau_), max_distance(max_distance_), update_step(0), policy_delay(2) {
 
     actor_target->copy_weights(*actor);
     critic1_target->copy_weights(*critic1);
@@ -107,7 +111,7 @@ torch::Tensor TD3Agent::preprocess_state(const project::common::State& state) {
     // Нормализованная дистанция [0, 1]
     obs_data.push_back(state.distance_to_goal / max_distance);
 
-    return torch::from_blob(obs_data.data(), {1, TOTAL_OBS_SIZE}, torch::kFloat32).clone();
+    return torch::tensor(obs_data, torch::kFloat32).reshape({1, TOTAL_OBS_SIZE});
 }
 
 std::pair<torch::Tensor, torch::Tensor> TD3Agent::select_action(torch::Tensor state, float noise_std) {
@@ -126,6 +130,7 @@ std::pair<torch::Tensor, torch::Tensor> TD3Agent::select_action(torch::Tensor st
 }
 
 void TD3Agent::soft_update(torch::nn::Module& target, const torch::nn::Module& source) {
+    torch::NoGradGuard no_grad;  // Отключаем градиенты при in-place обновлении весов
     for (const auto& tp : target.named_parameters()) {
         const auto& sp = source.named_parameters()[tp.key()];
         tp.value().data().mul_(1.0f - tau).add_(sp.data(), tau);
@@ -138,11 +143,21 @@ void TD3Agent::update(ReplayBuffer& buffer, int batch_size) {
     auto batch = buffer.sample(batch_size);
 
     // Подготовка батча
-    auto state_batch = torch::cat(batch | std::views::transform([](const Transition& t) { return t.state; })).squeeze(1);
-    auto action_batch = torch::cat(batch | std::views::transform([](const Transition& t) { return t.action; })).squeeze(1);
-    auto reward_batch = torch::cat(batch | std::views::transform([](const Transition& t) { return t.reward; })).squeeze(1);
-    auto next_state_batch = torch::cat(batch | std::views::transform([](const Transition& t) { return t.next_state; })).squeeze(1);
-    auto done_batch = torch::cat(batch | std::views::transform([](const Transition& t) { return t.done; })).squeeze(1);
+    std::vector<torch::Tensor> states, actions, rewards, next_states, dones;
+    for (const auto& t : batch) {
+        states.push_back(t.state);
+        // Гарантируем, что action не требует градиента
+        actions.push_back(t.action.detach());
+        rewards.push_back(t.reward);
+        next_states.push_back(t.next_state);
+        dones.push_back(t.done);
+    }
+
+    auto state_batch = torch::cat(states, 0);       // [batch_size, obs_dim]
+    auto action_batch = torch::cat(actions, 0);     // [batch_size, action_dim]
+    auto reward_batch = torch::cat(rewards, 0).squeeze(-1);  // [batch_size]
+    auto next_state_batch = torch::cat(next_states, 0);     // [batch_size, obs_dim]
+    auto done_batch = torch::cat(dones, 0).squeeze(-1);     // [batch_size]
 
     // Обновление критиков
     torch::Tensor next_action_noise = torch::randn_like(action_batch) * 0.2f;
@@ -187,4 +202,5 @@ void TD3Agent::update(ReplayBuffer& buffer, int batch_size) {
         soft_update(*critic2_target, *critic2);
     }
 }
-}
+
+}  // namespace rl

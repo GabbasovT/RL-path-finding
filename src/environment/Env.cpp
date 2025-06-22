@@ -1,5 +1,4 @@
 #include "Env.hpp"
-
 #include <utility>
 #include <array>
 #include <vector>
@@ -7,6 +6,11 @@
 #include "Consts.hpp"
 
 namespace project::env{
+
+    float Object::get_intersect(float o_x, float o_y, std::pair<float, float> n_ray) {
+        return -1.0f;
+    }
+
 
 float euclid(float a, float b) {
     return std::pow(std::pow(a, 2) + std::pow(b, 2), 0.5);
@@ -29,8 +33,8 @@ void Agent::shift(float u, float v) {
 std::pair<float, float> Agent::get_coords() {
     return {this->x, this->y};
 }
-std::array<float, project::common::SIZE_OF_ARRAY_OF_OBSERVATIONS> Agent::launch_rays(std::vector<Object> &objects_) {
-    std::array<float, project::common::SIZE_OF_ARRAY_OF_OBSERVATIONS> res;
+std::array<float, common::SIZE_OF_ARRAY_OF_OBSERVATIONS> Agent::launch_rays(std::vector<Object> &objects_) {
+    std::array<float, common::SIZE_OF_ARRAY_OF_OBSERVATIONS> res;
     for (int i = 0; i < res.size(); i++) {
         res[i] = 0;
     }
@@ -54,6 +58,11 @@ void Object::set_coords(float n_x, float n_y) {
 }
 std::pair<float, float> Object::get_coords() {
     return {this->x, this->y};
+}
+
+bool Object::check_colision(float o_x, float o_y) {
+    // Базовая реализация (можно считать, что объект - точка, коллизия не происходит)
+    return false;
 }
 
 Box::Box(float x, float y, float w, float h) {
@@ -131,36 +140,37 @@ float Goal::get_dist(float o_x, float o_y) {
     return norm;
 }
 
-Environment::Environment(std::vector<Object> objects_, Goal goal, Agent agent, 
-        float bord_x0, float bord_y0, float bord_x1, float bord_y1) : 
-        cur{ 
-            std::move(objects_), 
-            std::move(goal), 
-            std::move(agent), 
-            bord_x0, bord_y0, bord_x1, bord_y1 
+Environment::Environment(std::vector<Object> objects_, Goal goal, Agent agent,
+        float bord_x0, float bord_y0, float bord_x1, float bord_y1) :
+        cur{
+            std::move(objects_),
+            std::move(goal),
+            std::move(agent),
+            bord_x0, bord_y0, bord_x1, bord_y1
         },
         backup{ cur }
 {
-    objects_.push_back(Box(
+    // Добавление граничных Box-ов (стен)
+    cur.objects_.push_back(Box(
                             (bord_x0 + bord_x1) / 2,
-                            bord_y1, 
-                            std::abs(bord_x0 - bord_x1) * 1.1, 
+                            bord_y1,
+                            std::abs(bord_x0 - bord_x1) * 1.1,
                             std::abs(bord_y0 - bord_y1) / 10
                         ));
-    objects_.push_back(Box(
+    cur.objects_.push_back(Box(
                             (bord_x0 + bord_x1) / 2,
-                            bord_y0, 
-                            std::abs(bord_x0 - bord_x1) * 1.1, 
+                            bord_y0,
+                            std::abs(bord_x0 - bord_x1) * 1.1,
                             std::abs(bord_y0 - bord_y1) / 10
                         ));
-    objects_.push_back(Box(
-                            bord_x0, 
+    cur.objects_.push_back(Box(
+                            bord_x0,
                             (bord_y0 + bord_y1) / 2,
                             std::abs(bord_x0 - bord_x1) / 10,
                             std::abs(bord_y0 - bord_y1) * 1.1
                         ));
-    objects_.push_back(Box(
-                            bord_x1, 
+    cur.objects_.push_back(Box(
+                            bord_x1,
                             (bord_y0 + bord_y1) / 2,
                             std::abs(bord_x0 - bord_x1) / 10,
                             std::abs(bord_y0 - bord_y1) * 1.1

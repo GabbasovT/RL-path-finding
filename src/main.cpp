@@ -66,6 +66,7 @@ int main() {
             Action action{{action_data[0], action_data[1]}, 1.0f};
 
             // Шаг среды
+            std::cout << "action dir:" <<  action.dir.first << " " << action.dir.second << std::endl;
             State s2 = env.do_action(action);
             auto next_state = agent.preprocess_state(s2);
 
@@ -107,7 +108,6 @@ int main() {
             // Обновление состояния
             state = next_state;
             ep_reward += reward;
-
             if (done) break;
         }
 
