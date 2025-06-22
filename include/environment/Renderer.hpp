@@ -9,18 +9,21 @@
 namespace project::ren{
 
 class DynamicRectangles {
+    bool withInters = false;
     float width_;
     float height_;
     sf::RectangleShape background_;
     std::vector<sf::VertexArray> staticRects_;
+    std::vector<sf::VertexArray> agentRects_;
     std::vector<sf::VertexArray> dynamicRects_;
 
     void addRectangle(const sf::FloatRect& rect, const sf::Color& color, std::vector<sf::VertexArray>& target);
     void addStaticRect(const sf::FloatRect& rect, const sf::Color& color);
     void addDynamicRect(const sf::FloatRect& rect, const sf::Color& color);
 public:
-    DynamicRectangles(project::env::Environment& env);
-    void updateAgent(project::env::Agent* agent);
+    DynamicRectangles(project::env::Environment& env, bool addInters) const;
+    void updateAgent(project::env::Agent* agent) const;
+    void DynamicRectangles::updateInters(project::env::State* state) const;
     void draw(sf::RenderTarget& target) const;
 };
 

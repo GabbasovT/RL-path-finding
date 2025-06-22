@@ -44,7 +44,7 @@ int main() {
 
     sf::RenderWindow window(sf::VideoMode(WORLD_WIDTH, WORLD_HEIGHT), "Dynamic Rectangles");
     window.setSize(sf::Vector2u(1000, 1000));
-    project::ren::DynamicRectangles manager(env);
+    project::ren::DynamicRectangles manager(env, true);
 
     TD3Agent agent(ACTOR_LR, CRITIC_LR, GAMMA, TAU, MAX_DISTANCE);
     ReplayBuffer buffer(300000);
@@ -77,6 +77,7 @@ int main() {
                 }
 
                 manager.updateAgent(env.get_agent());
+                manager.updateInters(&s2);
 
                 window.clear();
                 manager.draw(window);

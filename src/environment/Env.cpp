@@ -34,7 +34,9 @@ void Agent::shift(float u, float v) {
 std::pair<float, float> Agent::get_coords() {
     return {this->x, this->y};
 }
-std::array<float, common::SIZE_OF_ARRAY_OF_OBSERVATIONS> Agent::launch_rays(std::vector<Box> &objects_) {
+std::array<float, common::SIZE_OF_ARRAY_OF_OBSERVATIONS> Agent::launch_rays(
+    std::vector<Box> &objects_, std::array<std::pair<float, float>, common::SIZE_OF_ARRAY_OF_OBSERVATIONS> &inters
+) {
     std::array<float, common::SIZE_OF_ARRAY_OF_OBSERVATIONS> res;
     for (int i = 0; i < res.size(); i++) {
         res[i] = 0;
@@ -49,6 +51,7 @@ std::array<float, common::SIZE_OF_ARRAY_OF_OBSERVATIONS> Agent::launch_rays(std:
             d = std::min(d, t);
         }
         res[i] = d;
+        inters[i] = {x + rdrs[i].first * d, y + rdrs[i].second * d};
     }
     return res;
 }
@@ -208,10 +211,10 @@ common::State Environment::reset() {
     return do_action(start);
 }
 
-common::State Environment::do_action(common::Action action) {
+common::State Environment::do_action(common::Action action) const {
     common::State st;
     cur.agent.shift(action.dir.first * action.len, action.dir.second * action.len);
-    st.obs = cur.agent.launch_rays(cur.objects_);
+    st.obs = cur.agent.launch_rays(cur.objects_, st.obs_intersect);
     std::pair<float, float> a_xy = cur.agent.get_coords();
     st.direction_to_goal = cur.goal.get_dir(a_xy.first, a_xy.second);
     st.distance_to_goal = cur.goal.get_dist(a_xy.first, a_xy.second);

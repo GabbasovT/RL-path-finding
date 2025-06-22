@@ -1,5 +1,7 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
+#include "Types.hpp"
+#include "Consts.hpp"
 #include "Env.hpp"
 #include "Renderer.hpp"
 
@@ -28,7 +30,12 @@ void DynamicRectangles::addDynamicRect(const sf::FloatRect& rect, const sf::Colo
     addRectangle(rect, color, dynamicRects_);
 }
 
-DynamicRectangles::DynamicRectangles(project::env::Environment &env) {
+void DynamicRectangles::addAgentRect(const sf::FloatRect& rect, const sf::Color& color) {
+    addRectangle(rect, color, agentRects_);
+}
+
+DynamicRectangles::DynamicRectangles(project::env::Environment &env, bool addInters) const {
+    withInters = addInters;
     width_ = env.get_w_h().first;
     height_ = env.get_w_h().second;
 
@@ -44,21 +51,46 @@ DynamicRectangles::DynamicRectangles(project::env::Environment &env) {
     std::pair<float, float> g_corn = env.get_goal()->get_right_bottom();
     std::pair<float, float> g_w_h = env.get_goal()->get_w_h();
     addStaticRect({g_corn.first - g_w_h.first, g_corn.second, g_w_h.first, g_w_h.second}, sf::Color::Yellow);
-    addDynamicRect({env.get_agent()->get_coords().first - 1, env.get_agent()->get_coords().second + 1, 2, 2}, sf::Color::Green);
+    addAgentRect({env.get_agent()->get_coords().first - 1, env.get_agent()->get_coords().second + 1, 2, 2}, sf::Color::Green);
+    if (withInters) {
+        for (int i = 0; i < project::common::SIZE_OF_ARRAY_OF_OBSERVATIONS; i++) {
+            addAgentRect({env.get_agent()->get_coords().first - 0.25, env.get_agent()->get_coords().second + 0.25, 0.5, 0.5}, sf::Color::Purple);
+        } 
+    }
 }
 
-void DynamicRectangles::updateAgent(project::env::Agent* agent) {
+
+
+void DynamicRectangles::updateAgent(project::env::Agent* agent) const {
     float n_x = agent->get_coords().first;
     float n_y = agent->get_coords().second;
 
-    dynamicRects_[0][0].position.x = n_x - 1;
-    dynamicRects_[0][0].position.y = n_y + 1;
-    dynamicRects_[0][1].position.x = n_x + 1;
-    dynamicRects_[0][1].position.y = n_y + 1;
-    dynamicRects_[0][2].position.x = n_x + 1;
-    dynamicRects_[0][2].position.y = n_y - 1;
-    dynamicRects_[0][3].position.x = n_x - 1;
-    dynamicRects_[0][3].position.y = n_y - 1;
+    agentRects_[0][0].position.x = n_x - 1;
+    agentRects_[0][0].position.y = n_y + 1;
+    agentRects_[0][1].position.x = n_x + 1;
+    agentRects_[0][1].position.y = n_y + 1;
+    agentRects_[0][2].position.x = n_x + 1;
+    agentRects_[0][2].position.y = n_y - 1;
+    agentRects_[0][3].position.x = n_x - 1;
+    agentRects_[0][3].position.y = n_y - 1;
+}
+
+void DynamicRectangles::updateInters(project::env::State* state) const {
+    if (withInters) {
+        for (std::pair<float, float> p : state->obs_intersect) {
+            float n_x = p.first;
+            float n_y = p.second;
+
+            dynamicRects_[0][0].position.x = n_x - 0.25;
+            dynamicRects_[0][0].position.y = n_y + 0.25;
+            dynamicRects_[0][1].position.x = n_x + 0.25;
+            dynamicRects_[0][1].position.y = n_y + 0.25;
+            dynamicRects_[0][2].position.x = n_x + 0.25;
+            dynamicRects_[0][2].position.y = n_y - 0.25;
+            dynamicRects_[0][3].position.x = n_x - 0.25;
+            dynamicRects_[0][3].position.y = n_y - 0.25;
+        }
+    }
 }
 
 void DynamicRectangles::draw(sf::RenderTarget& target) const {

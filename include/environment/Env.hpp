@@ -24,7 +24,9 @@ namespace project::env{
         Agent(float x, float y);
         void shift(float u, float v);
         std::pair<float, float> get_coords();
-        std::array<float, common::SIZE_OF_ARRAY_OF_OBSERVATIONS> launch_rays(std::vector<Box>& objects_);
+        std::array<float, common::SIZE_OF_ARRAY_OF_OBSERVATIONS> Agent::launch_rays(
+            std::vector<Box> &objects_, std::array<std::pair<float, float>, common::SIZE_OF_ARRAY_OF_OBSERVATIONS> &inters
+        );
     };
 
     class Object {
@@ -76,7 +78,7 @@ namespace project::env{
         std::vector<Box>* get_objects();
         std::pair<float, float> get_w_h();
 
-        common::State do_action(common::Action action);
+        common::State do_action(common::Action action) const;
         common::State reset();
     };
 
