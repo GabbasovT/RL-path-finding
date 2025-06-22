@@ -3,6 +3,8 @@
 #include <iostream>
 #include <chrono>
 #include <numeric>
+#include "Renderer.hpp"
+
 #include "ml/RL.hpp"
 #include "environment/Env.hpp"
 
