@@ -65,7 +65,6 @@ std::pair<float, float> Object::get_coords() {
 }
 
 bool Object::check_colision(float o_x, float o_y) {
-    // Базовая реализация (можно считать, что объект - точка, коллизия не происходит)
     return false;
 }
 
@@ -179,7 +178,6 @@ Environment::Environment(std::vector<Box> objects_, Goal goal, Agent agent,
         },
         backup{ cur }
 {
-    // Добавление граничных Box-ов (стен)
     cur.objects_.push_back(Box(
                             (bord_x0 + bord_x1) / 2,
                             bord_y1,

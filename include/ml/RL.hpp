@@ -11,7 +11,7 @@
 
 namespace rl {
     constexpr int BASE_OBS_SIZE = project::common::SIZE_OF_ARRAY_OF_OBSERVATIONS;
-    constexpr int EXTRA_OBS_SIZE = 3; // direction_to_goal (2) + distance_to_goal (1)
+    constexpr int EXTRA_OBS_SIZE = 3;
     constexpr int TOTAL_OBS_SIZE = BASE_OBS_SIZE + EXTRA_OBS_SIZE;
     constexpr int ACT_SIZE = 2;
 

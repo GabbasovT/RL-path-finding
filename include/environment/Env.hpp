@@ -35,9 +35,9 @@ namespace project::env{
     public:
         void set_coords(float n_x, float n_y);
         std::pair<float, float> get_coords();
-        virtual bool check_colision(float o_x, float o_y);              // Сделали виртуальным
+        virtual bool check_colision(float o_x, float o_y);
         virtual float get_intersect(float o_x, float o_y, std::pair<float, float> n_ray);
-        virtual ~Object() = default;                                     // Виртуальный деструктор
+        virtual ~Object() = default;
     };
 
     class Box : public Object {

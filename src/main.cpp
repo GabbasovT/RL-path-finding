@@ -42,7 +42,7 @@ int main() {
         WORLD_WIDTH, WORLD_HEIGHT
     );
 
-    sf::RenderWindow window(sf::VideoMode(WORLD_WIDTH, WORLD_HEIGHT), "Dynamic Rectangles");
+    sf::RenderWindow window(sf::VideoMode(WORLD_WIDTH, WORLD_HEIGHT), "RL-path-finding");
     window.setSize(sf::Vector2u(1000, 1000));
     project::ren::DynamicRectangles manager(env, true);
 
@@ -87,12 +87,6 @@ int main() {
 
             float reward = -0.001f;
             bool done = false;
-
-            // Штраф за близость к препятствиям
-            // float min_ray = *std::min_element(s2.obs.begin(), s2.obs.end());
-            // if (min_ray < 0.3f) {
-            //     reward -= 0.1f * (1.0f - min_ray);
-            // }
 
             switch (s2.env_type) {
                 case EnvState::TERMINAL:
