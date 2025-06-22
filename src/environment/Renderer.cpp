@@ -1,6 +1,7 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include "Env.hpp"
+#include "Renderer.hpp"
 
 namespace project::ren{
 
