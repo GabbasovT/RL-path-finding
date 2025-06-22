@@ -20,7 +20,7 @@ class DynamicRectangles {
     void addDynamicRect(const sf::FloatRect& rect, const sf::Color& color);
 public:
     DynamicRectangles(project::env::Environment& env);
-    void shiftDinamic(float shift_x, float shift_y);
+    void updateAgent(project::env::Agent& agent);
     void draw(sf::RenderTarget& target) const;
 };
 

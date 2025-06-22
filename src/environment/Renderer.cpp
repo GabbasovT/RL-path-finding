@@ -44,21 +44,21 @@ DynamicRectangles::DynamicRectangles(project::env::Environment &env) {
     std::pair<float, float> g_corn = env.get_goal().get_left_top();
     std::pair<float, float> g_w_h = env.get_goal().get_w_h();
     addStaticRect({g_corn.first, g_corn.second, g_w_h.first, g_w_h.second}, sf::Color::Yellow);
-    addDynamicRect({env.get_agent().get_coords().first - 1, env.get_agent().get_coords().second + 1, 2, 2}, sf::Color::Green);
+    addDynamicRect({env.get_agent()->get_coords().first - 1, env.get_agent()->get_coords().second + 1, 2, 2}, sf::Color::Green);
 }
 
 void DynamicRectangles::updateAgent(project::env::Agent& agent) {
     float n_x = agent.get_coords().first;
     float n_y = agent.get_coords().second;
 
-    DynamicRectangles[0][0].position.x = n_x - 1;
-    DynamicRectangles[0][0].position.y = n_y + 1;
-    DynamicRectangles[0][1].position.x = n_x + 1;
-    DynamicRectangles[0][1].position.y = n_y + 1;
-    DynamicRectangles[0][2].position.x = n_x + 1;
-    DynamicRectangles[0][2].position.y = n_y - 1;
-    DynamicRectangles[0][3].position.x = n_x - 1;
-    DynamicRectangles[0][3].position.y = n_y - 1;
+    dynamicRects_[0][0].position.x = n_x - 1;
+    dynamicRects_[0][0].position.y = n_y + 1;
+    dynamicRects_[0][1].position.x = n_x + 1;
+    dynamicRects_[0][1].position.y = n_y + 1;
+    dynamicRects_[0][2].position.x = n_x + 1;
+    dynamicRects_[0][2].position.y = n_y - 1;
+    dynamicRects_[0][3].position.x = n_x - 1;
+    dynamicRects_[0][3].position.y = n_y - 1;
 }
 
 void DynamicRectangles::draw(sf::RenderTarget& target) const {
