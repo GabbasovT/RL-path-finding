@@ -37,7 +37,7 @@ namespace rl {
     };
 
     struct ActorNetImpl : torch::nn::Module {
-        torch::nn::Linear fc1, fc2, fc3;
+        torch::nn::Linear fc1, fc2, fc3, fc4;
         ActorNetImpl();
         torch::Tensor forward(torch::Tensor x);
         void copy_weights(const ActorNetImpl& source);
@@ -45,7 +45,7 @@ namespace rl {
     TORCH_MODULE(ActorNet);
 
     struct CriticNetImpl : torch::nn::Module {
-        torch::nn::Linear fc1, fc2, fc3;
+        torch::nn::Linear fc1, fc2, fc3, fc4;
         CriticNetImpl();
         torch::Tensor forward(torch::Tensor state, torch::Tensor action);
         void copy_weights(const CriticNetImpl& source);

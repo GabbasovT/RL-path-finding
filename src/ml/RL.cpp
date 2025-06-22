@@ -6,7 +6,6 @@
 
 namespace rl {
 
-// ReplayBuffer
 ReplayBuffer::ReplayBuffer(size_t capacity) : capacity_(capacity), rng(std::random_device{}()) {}
 
 void ReplayBuffer::push(const Transition& t) {
@@ -24,62 +23,77 @@ std::vector<Transition> ReplayBuffer::sample(size_t batch_size) {
 
 size_t ReplayBuffer::size() const { return buffer.size(); }
 
-// Actor Network
-ActorNetImpl::ActorNetImpl() : fc1(TOTAL_OBS_SIZE, 256), fc2(256, 256), fc3(256, ACT_SIZE) {
+ActorNetImpl::ActorNetImpl() :
+    fc1(TOTAL_OBS_SIZE, 512),
+    fc2(512, 512),
+    fc3(512, 256),
+    fc4(256, ACT_SIZE) {
+
     register_module("fc1", fc1);
     register_module("fc2", fc2);
     register_module("fc3", fc3);
+    register_module("fc4", fc4);
 
-    torch::nn::init::xavier_uniform_(fc1->weight);
-    torch::nn::init::constant_(fc1->bias, 0.1);
-    torch::nn::init::xavier_uniform_(fc2->weight);
-    torch::nn::init::constant_(fc2->bias, 0.1);
-    torch::nn::init::xavier_uniform_(fc3->weight);
-    torch::nn::init::constant_(fc3->bias, 0.1);
+    torch::nn::init::orthogonal_(fc1->weight, 0.1);
+    torch::nn::init::constant_(fc1->bias, 0.0);
+    torch::nn::init::orthogonal_(fc2->weight, 0.1);
+    torch::nn::init::constant_(fc2->bias, 0.0);
+    torch::nn::init::orthogonal_(fc3->weight, 0.1);
+    torch::nn::init::constant_(fc3->bias, 0.0);
+    torch::nn::init::orthogonal_(fc4->weight, 0.01);
+    torch::nn::init::constant_(fc4->bias, 0.0);
 }
 
 torch::Tensor ActorNetImpl::forward(torch::Tensor x) {
     x = torch::relu(fc1->forward(x));
     x = torch::relu(fc2->forward(x));
-    return torch::tanh(fc3->forward(x));
+    x = torch::relu(fc3->forward(x));
+    return torch::tanh(fc4->forward(x));
 }
 
 void ActorNetImpl::copy_weights(const ActorNetImpl& source) {
-    torch::NoGradGuard no_grad;  // Отключаем градиенты при копировании весов
+    torch::NoGradGuard no_grad;
     for (const auto& p : named_parameters()) {
         p.value().copy_(source.named_parameters()[p.key()]);
     }
 }
 
-// Critic Network
-CriticNetImpl::CriticNetImpl() : fc1(TOTAL_OBS_SIZE + ACT_SIZE, 256), fc2(256, 256), fc3(256, 1) {
+CriticNetImpl::CriticNetImpl() :
+    fc1(TOTAL_OBS_SIZE + ACT_SIZE, 512),
+    fc2(512, 512),
+    fc3(512, 256),
+    fc4(256, 1) {
+
     register_module("fc1", fc1);
     register_module("fc2", fc2);
     register_module("fc3", fc3);
+    register_module("fc4", fc4);
 
-    torch::nn::init::xavier_uniform_(fc1->weight);
-    torch::nn::init::constant_(fc1->bias, 0.1);
-    torch::nn::init::xavier_uniform_(fc2->weight);
-    torch::nn::init::constant_(fc2->bias, 0.1);
-    torch::nn::init::xavier_uniform_(fc3->weight);
-    torch::nn::init::constant_(fc3->bias, 0.1);
+    torch::nn::init::orthogonal_(fc1->weight, 0.1);
+    torch::nn::init::constant_(fc1->bias, 0.0);
+    torch::nn::init::orthogonal_(fc2->weight, 0.1);
+    torch::nn::init::constant_(fc2->bias, 0.0);
+    torch::nn::init::orthogonal_(fc3->weight, 0.1);
+    torch::nn::init::constant_(fc3->bias, 0.0);
+    torch::nn::init::orthogonal_(fc4->weight, 0.01);
+    torch::nn::init::constant_(fc4->bias, 0.0);
 }
 
 torch::Tensor CriticNetImpl::forward(torch::Tensor state, torch::Tensor action) {
     auto x = torch::cat({state, action}, 1);
     x = torch::relu(fc1->forward(x));
     x = torch::relu(fc2->forward(x));
-    return fc3->forward(x);
+    x = torch::relu(fc3->forward(x));
+    return fc4->forward(x);
 }
 
 void CriticNetImpl::copy_weights(const CriticNetImpl& source) {
-    torch::NoGradGuard no_grad;  // Отключаем градиенты при копировании весов
+    torch::NoGradGuard no_grad;
     for (const auto& p : named_parameters()) {
         p.value().copy_(source.named_parameters()[p.key()]);
     }
 }
 
-// TD3 Agent
 TD3Agent::TD3Agent(float actor_lr, float critic_lr, float gamma_, float tau_, float max_distance_)
     : actor(std::make_shared<ActorNetImpl>()),
       actor_target(std::make_shared<ActorNetImpl>()),
@@ -90,25 +104,30 @@ TD3Agent::TD3Agent(float actor_lr, float critic_lr, float gamma_, float tau_, fl
       actor_optimizer(actor->parameters(), actor_lr),
       critic1_optimizer(critic1->parameters(), critic_lr),
       critic2_optimizer(critic2->parameters(), critic_lr),
-      gamma(gamma_), tau(tau_), max_distance(max_distance_), update_step(0), policy_delay(2) {
+      gamma(gamma_), tau(tau_), max_distance(max_distance_), update_step(0), policy_delay(4) {
 
     actor_target->copy_weights(*actor);
     critic1_target->copy_weights(*critic1);
     critic2_target->copy_weights(*critic2);
+
+    for (auto& param : actor_target->parameters()) {
+        param.set_requires_grad(false);
+    }
+    for (auto& param : critic1_target->parameters()) {
+        param.set_requires_grad(false);
+    }
+    for (auto& param : critic2_target->parameters()) {
+        param.set_requires_grad(false);
+    }
 }
 
 torch::Tensor TD3Agent::preprocess_state(const project::common::State& state) {
     std::vector<float> obs_data;
     obs_data.reserve(TOTAL_OBS_SIZE);
 
-    // Основные наблюдения (лучи)
     obs_data.insert(obs_data.end(), state.obs.begin(), state.obs.end());
-
-    // Направление к цели (нормализованный вектор)
     obs_data.push_back(state.direction_to_goal.first);
     obs_data.push_back(state.direction_to_goal.second);
-
-    // Нормализованная дистанция [0, 1]
     obs_data.push_back(state.distance_to_goal / max_distance);
 
     return torch::tensor(obs_data, torch::kFloat32).reshape({1, TOTAL_OBS_SIZE});
@@ -130,7 +149,7 @@ std::pair<torch::Tensor, torch::Tensor> TD3Agent::select_action(torch::Tensor st
 }
 
 void TD3Agent::soft_update(torch::nn::Module& target, const torch::nn::Module& source) {
-    torch::NoGradGuard no_grad;  // Отключаем градиенты при in-place обновлении весов
+    torch::NoGradGuard no_grad;
     for (const auto& tp : target.named_parameters()) {
         const auto& sp = source.named_parameters()[tp.key()];
         tp.value().data().mul_(1.0f - tau).add_(sp.data(), tau);
@@ -142,27 +161,23 @@ void TD3Agent::update(ReplayBuffer& buffer, int batch_size) {
 
     auto batch = buffer.sample(batch_size);
 
-    // Подготовка батча
     std::vector<torch::Tensor> states, actions, rewards, next_states, dones;
     for (const auto& t : batch) {
         states.push_back(t.state);
-        // Гарантируем, что action не требует градиента
         actions.push_back(t.action.detach());
         rewards.push_back(t.reward);
         next_states.push_back(t.next_state);
         dones.push_back(t.done);
     }
 
-    auto state_batch = torch::cat(states, 0);       // [batch_size, obs_dim]
-    auto action_batch = torch::cat(actions, 0);     // [batch_size, action_dim]
-    auto reward_batch = torch::cat(rewards, 0).squeeze(-1);  // [batch_size]
-    auto next_state_batch = torch::cat(next_states, 0);     // [batch_size, obs_dim]
-    auto done_batch = torch::cat(dones, 0).squeeze(-1);     // [batch_size]
+    auto state_batch = torch::cat(states, 0);
+    auto action_batch = torch::cat(actions, 0);
+    auto reward_batch = torch::cat(rewards, 0).squeeze(-1);
+    auto next_state_batch = torch::cat(next_states, 0);
+    auto done_batch = torch::cat(dones, 0).squeeze(-1);
 
-    // Обновление критиков
     torch::Tensor next_action_noise = torch::randn_like(action_batch) * 0.2f;
     next_action_noise = next_action_noise.clamp(-0.5f, 0.5f);
-
     auto next_actions = actor_target->forward(next_state_batch) + next_action_noise;
     next_actions = next_actions.clamp(-1.0f, 1.0f);
 
@@ -187,7 +202,6 @@ void TD3Agent::update(ReplayBuffer& buffer, int batch_size) {
     torch::nn::utils::clip_grad_norm_(critic2->parameters(), 1.0);
     critic2_optimizer.step();
 
-    // Обновление актора (с задержкой)
     if (++update_step % policy_delay == 0) {
         auto actor_loss = -critic1->forward(state_batch, actor->forward(state_batch)).mean();
 
@@ -196,11 +210,10 @@ void TD3Agent::update(ReplayBuffer& buffer, int batch_size) {
         torch::nn::utils::clip_grad_norm_(actor->parameters(), 1.0);
         actor_optimizer.step();
 
-        // Мягкое обновление целевых сетей
         soft_update(*actor_target, *actor);
         soft_update(*critic1_target, *critic1);
         soft_update(*critic2_target, *critic2);
     }
 }
 
-}  // namespace rl
+}

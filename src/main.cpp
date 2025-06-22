@@ -15,19 +15,19 @@ int main() {
     const float WORLD_HEIGHT = 100.0f;
     const float MAX_DISTANCE = std::sqrt(WORLD_WIDTH * WORLD_WIDTH + WORLD_HEIGHT * WORLD_HEIGHT);
 
-    const int EPISODES = 5000;
+    const int EPISODES = 10000;
     const int MAX_STEPS = 500;
-    const int BATCH_SIZE = 256;
+    const int BATCH_SIZE = 512;
     const int LOG_INTERVAL = 50;
-    const float ACTOR_LR = 3e-4;
-    const float CRITIC_LR = 3e-4;
+    const float ACTOR_LR = 3e-5;
+    const float CRITIC_LR = 3e-5;
     const float GAMMA = 0.99f;
     const float TAU = 0.005f;
-    const int TRAIN_START_SIZE = 1000;
-    const int TRAIN_INTERVAL = 2;
+    const int TRAIN_START_SIZE = 5000;
+    const int TRAIN_INTERVAL = 1;
 
     project::env::Agent init_agent(WORLD_WIDTH / 2, WORLD_HEIGHT / 2);
-    project::env::Goal goal(10.0f, 10.0f, 5.0f, 5.0f); // x, y, w, h
+    project::env::Goal goal(10.0f, 10.0f, 5.0f, 5.0f);
 
     std::vector<project::env::Box> obstacles = {
         project::env::Box(30.0f, 30.0f, 10.0f, 10.0f),
@@ -43,10 +43,11 @@ int main() {
     );
 
     sf::RenderWindow window(sf::VideoMode(WORLD_WIDTH, WORLD_HEIGHT), "Dynamic Rectangles");
+    window.setSize(sf::Vector2u(1000, 1000));
     project::ren::DynamicRectangles manager(env);
 
     TD3Agent agent(ACTOR_LR, CRITIC_LR, GAMMA, TAU, MAX_DISTANCE);
-    ReplayBuffer buffer(100000);
+    ReplayBuffer buffer(300000);
 
     std::vector<float> episode_rewards;
     int success_count = 0;
@@ -59,7 +60,8 @@ int main() {
         float ep_reward = 0.0f;
         bool episode_success = false;
 
-        float noise_std = std::max(0.05f, 0.5f * (1.0f - ep / float(EPISODES)));
+        float noise_std = 0.5f * (1.0f - ep / 8000.0f);
+        if (noise_std < 0.05f) noise_std = 0.05f;
 
         for (int t = 0; t < MAX_STEPS; ++t) {
             auto [action_tensor, _] = agent.select_action(state, noise_std);
@@ -73,7 +75,7 @@ int main() {
                     if (event.type == sf::Event::Closed)
                         window.close();
                 }
-                
+
                 manager.updateAgent(env.get_agent());
 
                 window.clear();
@@ -85,22 +87,29 @@ int main() {
             float reward = -0.001f;
             bool done = false;
 
+            // Штраф за близость к препятствиям
+            // float min_ray = *std::min_element(s2.obs.begin(), s2.obs.end());
+            // if (min_ray < 0.3f) {
+            //     reward -= 0.1f * (1.0f - min_ray);
+            // }
+
             switch (s2.env_type) {
                 case EnvState::TERMINAL:
-                    reward = 100.0f + 30.0f * (1.0f - s2.distance_to_goal / MAX_DISTANCE);
+                    reward = 500.0f;
                     done = true;
                     episode_success = true;
                     break;
                 case EnvState::COLLISION:
-                    reward = -100.0f - 10.0f * s2.distance_to_goal / MAX_DISTANCE;
+                    reward = -100.0f;
                     done = true;
                     break;
                 case EnvState::TIMEOUT:
-                    reward = -10.0f;
+                    reward = -5.0f;
                     done = true;
                     break;
                 default:
-                    reward += 10.0f * (s.distance_to_goal - s2.distance_to_goal) / MAX_DISTANCE;
+                    float progress = (s.distance_to_goal - s2.distance_to_goal) / MAX_DISTANCE;
+                    reward += 30.0f * progress;
             }
 
             buffer.push({
