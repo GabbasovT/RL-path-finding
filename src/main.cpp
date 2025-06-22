@@ -1,4 +1,3 @@
-// main.cpp
 #include <torch/torch.h>
 #include <iostream>
 #include <chrono>
@@ -12,24 +11,21 @@ using namespace project::common;
 using namespace rl;
 
 int main() {
-    // Параметры среды
     const float WORLD_WIDTH = 100.0f;
     const float WORLD_HEIGHT = 100.0f;
     const float MAX_DISTANCE = std::sqrt(WORLD_WIDTH * WORLD_WIDTH + WORLD_HEIGHT * WORLD_HEIGHT);
 
-    // Параметры обучения
     const int EPISODES = 5000;
-    const int MAX_STEPS = 1000;
-    const int BATCH_SIZE = 512;
+    const int MAX_STEPS = 500;
+    const int BATCH_SIZE = 256;
     const int LOG_INTERVAL = 50;
     const float ACTOR_LR = 3e-4;
     const float CRITIC_LR = 3e-4;
     const float GAMMA = 0.99f;
     const float TAU = 0.005f;
-    const int TRAIN_START_SIZE = 1000;             // [MODIFIED]
-    const int TRAIN_INTERVAL = 2;                  // [MODIFIED]
+    const int TRAIN_START_SIZE = 1000;
+    const int TRAIN_INTERVAL = 2;
 
-    // Инициализация среды
     project::env::Agent init_agent(WORLD_WIDTH / 2, WORLD_HEIGHT / 2);
     project::env::Goal goal(10.0f, 10.0f, 5.0f, 5.0f); // x, y, w, h
 
@@ -49,11 +45,9 @@ int main() {
     sf::RenderWindow window(sf::VideoMode(WORLD_WIDTH, WORLD_HEIGHT), "Dynamic Rectangles");
     project::ren::DynamicRectangles manager(env);
 
-    // Инициализация агента
     TD3Agent agent(ACTOR_LR, CRITIC_LR, GAMMA, TAU, MAX_DISTANCE);
     ReplayBuffer buffer(100000);
 
-    // Статистика
     std::vector<float> episode_rewards;
     int success_count = 0;
     auto start_time = std::chrono::steady_clock::now();
@@ -88,26 +82,25 @@ int main() {
             }
             auto next_state = agent.preprocess_state(s2);
 
-            // --- SHAPING REWARD ---
-            float reward = -0.01f;  // базовый штраф
+            float reward = -0.001f;
             bool done = false;
 
             switch (s2.env_type) {
                 case EnvState::TERMINAL:
-                    reward = 100.0f + 30.0f * (1.0f - s2.distance_to_goal / MAX_DISTANCE);  // [MODIFIED]
+                    reward = 100.0f + 30.0f * (1.0f - s2.distance_to_goal / MAX_DISTANCE);
                     done = true;
                     episode_success = true;
                     break;
                 case EnvState::COLLISION:
-                    reward = -100.0f - 10.0f * s2.distance_to_goal / MAX_DISTANCE;  // [MODIFIED]
+                    reward = -100.0f - 10.0f * s2.distance_to_goal / MAX_DISTANCE;
                     done = true;
                     break;
                 case EnvState::TIMEOUT:
-                    reward = -10.0f;  // [MODIFIED]
+                    reward = -10.0f;
                     done = true;
                     break;
                 default:
-                    reward += 10.0f * (s.distance_to_goal - s2.distance_to_goal) / MAX_DISTANCE;  // [MODIFIED]
+                    reward += 10.0f * (s.distance_to_goal - s2.distance_to_goal) / MAX_DISTANCE;
             }
 
             buffer.push({
@@ -118,8 +111,7 @@ int main() {
                 torch::tensor({done ? 1.0f : 0.0f}, torch::kFloat32)
             });
 
-            // --- UPDATE only every N steps and after TRAIN_START_SIZE ---
-            if (buffer.size() > TRAIN_START_SIZE && t % TRAIN_INTERVAL == 0) {  // [MODIFIED]
+            if (buffer.size() > TRAIN_START_SIZE && t % TRAIN_INTERVAL == 0) {
                 agent.update(buffer, BATCH_SIZE);
             }
 
