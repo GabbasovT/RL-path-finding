@@ -7,9 +7,9 @@
 
 namespace project::env{
 
-    float Object::get_intersect(float o_x, float o_y, std::pair<float, float> n_ray) {
-        return -1.0f;
-    }
+float Object::get_intersect(float o_x, float o_y, std::pair<float, float> n_ray) {
+    return -1.0f;
+}
 
 
 float euclid(float a, float b) {
@@ -205,13 +205,13 @@ Environment::Environment(std::vector<Box> objects_, Goal goal, Agent agent,
     backup = cur;
 }   
 
-Goal* Environment::get_goal() {
+const Goal* Environment::get_goal() {
     return &cur.goal;
 }
-Agent* Environment::get_agent() {
+const Agent* Environment::get_agent() {
     return &cur.agent;
 }
-std::vector<Box>* Environment::get_objects() {
+const std::vector<Box>* Environment::get_objects() {
     return &cur.objects_;
 }
 std::pair<float, float> Environment::get_w_h() {

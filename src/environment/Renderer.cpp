@@ -36,7 +36,7 @@ void DynamicRectangles::addAgentRect(const sf::FloatRect& rect, const sf::Color&
     addRectangle(rect, color, agentRects_);
 }
 
-DynamicRectangles::DynamicRectangles(project::env::Environment &env, bool addInters) {
+DynamicRectangles::DynamicRectangles(const project::env::Environment &env, bool addInters) {
     withInters = addInters;
     width_ = env.get_w_h().first;
     height_ = env.get_w_h().second;
@@ -63,35 +63,35 @@ DynamicRectangles::DynamicRectangles(project::env::Environment &env, bool addInt
 
 
 
-void DynamicRectangles::updateAgent(project::env::Agent* agent) {
+void DynamicRectangles::updateAgent(const project::env::Agent* agent) {
     float n_x = agent->get_coords().first;
     float n_y = agent->get_coords().second;
 
-    agentRects_[0][0].position.x = n_x - 1;
-    agentRects_[0][0].position.y = n_y + 1;
-    agentRects_[0][1].position.x = n_x + 1;
-    agentRects_[0][1].position.y = n_y + 1;
-    agentRects_[0][2].position.x = n_x + 1;
-    agentRects_[0][2].position.y = n_y - 1;
-    agentRects_[0][3].position.x = n_x - 1;
-    agentRects_[0][3].position.y = n_y - 1;
+    agentRects_[0][0].position.x = n_x - agentR;
+    agentRects_[0][0].position.y = n_y + agentR;
+    agentRects_[0][1].position.x = n_x + agentR;
+    agentRects_[0][1].position.y = n_y + agentR;
+    agentRects_[0][2].position.x = n_x + agentR;
+    agentRects_[0][2].position.y = n_y - agentR;
+    agentRects_[0][3].position.x = n_x - agentR;
+    agentRects_[0][3].position.y = n_y - agentR;
 }
 
-void DynamicRectangles::updateInters(project::common::State* state) {
+void DynamicRectangles::updateInters(const project::common::State* state) {
     if (withInters) {
         for (int i = 0; i < state->obs_intersect.size(); i++) {
             std::pair<float, float> p = state->obs_intersect[i];
             float n_x = p.first;
             float n_y = p.second;
 
-            dynamicRects_[i][0].position.x = n_x - 0.25f;
-            dynamicRects_[i][0].position.y = n_y + 0.25f;
-            dynamicRects_[i][1].position.x = n_x + 0.25f;
-            dynamicRects_[i][1].position.y = n_y + 0.25f;
-            dynamicRects_[i][2].position.x = n_x + 0.25f;
-            dynamicRects_[i][2].position.y = n_y - 0.25f;
-            dynamicRects_[i][3].position.x = n_x - 0.25f;
-            dynamicRects_[i][3].position.y = n_y - 0.25f;
+            dynamicRects_[i][0].position.x = n_x - intersR;
+            dynamicRects_[i][0].position.y = n_y + intersR;
+            dynamicRects_[i][1].position.x = n_x + intersR;
+            dynamicRects_[i][1].position.y = n_y + intersR;
+            dynamicRects_[i][2].position.x = n_x + intersR;
+            dynamicRects_[i][2].position.y = n_y - intersR;
+            dynamicRects_[i][3].position.x = n_x - intersR;
+            dynamicRects_[i][3].position.y = n_y - intersR;
         }
     }
 }
