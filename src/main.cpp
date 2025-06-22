@@ -1,3 +1,4 @@
+// main.cpp
 #include <torch/torch.h>
 #include <iostream>
 #include <chrono>
@@ -23,9 +24,11 @@ int main() {
     const float CRITIC_LR = 3e-4;
     const float GAMMA = 0.99f;
     const float TAU = 0.005f;
+    const int TRAIN_START_SIZE = 1000;             // [MODIFIED]
+    const int TRAIN_INTERVAL = 2;                  // [MODIFIED]
 
     // Инициализация среды
-    project::env::Agent init_agent(WORLD_WIDTH/2, WORLD_HEIGHT/2);
+    project::env::Agent init_agent(WORLD_WIDTH / 2, WORLD_HEIGHT / 2);
     project::env::Goal goal(10.0f, 10.0f, 5.0f, 5.0f); // x, y, w, h
 
     std::vector<project::env::Box> obstacles = {
@@ -37,8 +40,8 @@ int main() {
         obstacles,
         goal,
         init_agent,
-        0.0f, 0.0f, // bord_x0, bord_y0
-        WORLD_WIDTH, WORLD_HEIGHT // bord_x1, bord_y1
+        0.0f, 0.0f,
+        WORLD_WIDTH, WORLD_HEIGHT
     );
 
     // Инициализация агента
@@ -56,46 +59,38 @@ int main() {
         float ep_reward = 0.0f;
         bool episode_success = false;
 
-        // Параметры исследования (затухающий шум)
         float noise_std = std::max(0.05f, 0.3f * (1.0f - ep / float(EPISODES)));
 
         for (int t = 0; t < MAX_STEPS; ++t) {
-            // Выбор действия
             auto [action_tensor, _] = agent.select_action(state, noise_std);
             auto action_data = action_tensor.squeeze().data_ptr<float>();
             Action action{{action_data[0], action_data[1]}, 1.0f};
 
-            // Шаг среды
             State s2 = env.do_action(action);
-            if (s2.env_type == EnvState::TERMINAL) {
-                std::cout << t << " " << s2.distance_to_goal << " " << s2.direction_to_goal.first << " " << s2.direction_to_goal.second << std::endl;
-            }
             auto next_state = agent.preprocess_state(s2);
 
-            // Награда
-            float reward = -0.1f; // Штраф за каждый шаг
+            // --- SHAPING REWARD ---
+            float reward = -0.01f;  // базовый штраф
             bool done = false;
 
-            switch(s2.env_type) {
+            switch (s2.env_type) {
                 case EnvState::TERMINAL:
-                    reward = 10.0f + 5.0f * (1.0f - s2.distance_to_goal/MAX_DISTANCE);
+                    reward = 100.0f + 30.0f * (1.0f - s2.distance_to_goal / MAX_DISTANCE);  // [MODIFIED]
                     done = true;
                     episode_success = true;
                     break;
                 case EnvState::COLLISION:
-                    reward = -10.0f - 2.0f * s2.distance_to_goal/MAX_DISTANCE;
+                    reward = -100.0f - 10.0f * s2.distance_to_goal / MAX_DISTANCE;  // [MODIFIED]
                     done = true;
                     break;
                 case EnvState::TIMEOUT:
-                    reward = -5.0f;
+                    reward = -10.0f;  // [MODIFIED]
                     done = true;
                     break;
                 default:
-                    // Поощрение за движение к цели
-                    reward += 0.5f * (s.distance_to_goal - s2.distance_to_goal)/MAX_DISTANCE;
+                    reward += 10.0f * (s.distance_to_goal - s2.distance_to_goal) / MAX_DISTANCE;  // [MODIFIED]
             }
 
-            // Сохраняем переход
             buffer.push({
                 state,
                 action_tensor,
@@ -104,20 +99,19 @@ int main() {
                 torch::tensor({done ? 1.0f : 0.0f}, torch::kFloat32)
             });
 
-            // Обучение
-            agent.update(buffer, BATCH_SIZE);
+            // --- UPDATE only every N steps and after TRAIN_START_SIZE ---
+            if (buffer.size() > TRAIN_START_SIZE && t % TRAIN_INTERVAL == 0) {  // [MODIFIED]
+                agent.update(buffer, BATCH_SIZE);
+            }
 
-            // Обновление состояния
             state = next_state;
             ep_reward += reward;
             if (done) break;
         }
 
-        // Статистика
         if (episode_success) success_count++;
         episode_rewards.push_back(ep_reward);
 
-        // Логирование
         if (ep % LOG_INTERVAL == 0 && ep > 0) {
             auto avg_reward = std::accumulate(
                 episode_rewards.end() - LOG_INTERVAL,
