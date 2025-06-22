@@ -96,25 +96,25 @@ float Box::get_intersect(float o_x, float o_y, std::pair<float, float> n_ray) {
         std::pair<float, float> c4 = {k_y * (y - h/2 - o_y) + o_x, y - h/2};
         float res = INFINITY;
         float t;
-        if (std::abs(c1.second - y) <= h/2) {
+        if (std::abs(c1.second - y) <= h/2 && std::signbit(c1.second - o_y) == std::signbit(n_ray.second)) {
             t = euclid(c1.first - o_x, c1.second - o_y);
             if (res > t) {
                 res = t;
             }
         }
-        if (std::abs(c2.second - y) <= h/2) {
+        if (std::abs(c2.second - y) <= h/2 && std::signbit(c2.second - o_y) == std::signbit(n_ray.second)) {
             t = euclid(c2.first - o_x, c2.second - o_y);
             if (res > t) {
                 res = t;
             }
         }
-        if (std::abs(c3.first - x) <= w/2) {
+        if (std::abs(c3.first - x) <= w/2 && std::signbit(c3.second - o_y) == std::signbit(n_ray.second)) {
             t = euclid(c3.first - o_x, c3.second - o_y);
             if (res > t) {
                 res = t;
             }
         }
-        if (std::abs(c4.first - x) <= w/2) {
+        if (std::abs(c4.first - x) <= w/2 && std::signbit(c4.second - o_y) == std::signbit(n_ray.second)) {
             t = euclid(c4.first - o_x, c4.second - o_y);
             if (res > t) {
                 res = t;
@@ -175,6 +175,7 @@ Environment::Environment(std::vector<Object> objects_, Goal goal, Agent agent,
                             std::abs(bord_x0 - bord_x1) / 10,
                             std::abs(bord_y0 - bord_y1) * 1.1
                         ));
+    backup = cur;
 }
 
 common::State Environment::reset() {
