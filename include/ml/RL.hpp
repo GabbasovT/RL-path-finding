@@ -57,6 +57,9 @@ namespace rl {
         TD3Agent(float actor_lr, float critic_lr, float gamma, float tau, float max_distance);
         std::pair<torch::Tensor, torch::Tensor> select_action(torch::Tensor state, float noise_std = 0.1f);
         void update(ReplayBuffer& buffer, int batch_size);
+        void save_model(const std::string& actor_path, const std::string& critic1_path, const std::string& critic2_path);
+        void load_model(const std::string& actor_path, const std::string& critic1_path, const std::string& critic2_path);
+        void set_eval_mode(bool eval);
         torch::Tensor preprocess_state(const project::common::State& state);
 
         ActorNet actor;

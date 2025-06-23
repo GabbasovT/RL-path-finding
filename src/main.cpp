@@ -2,6 +2,7 @@
 #include <iostream>
 #include <chrono>
 #include <numeric>
+#include <filesystem>
 #include "Renderer.hpp"
 
 #include "ml/RL.hpp"
@@ -11,8 +12,15 @@
 using namespace project::common;
 using namespace rl;
 
-int main() {
-    const float MAX_DISTANCE = std::sqrt(project::config::WORLD_WIDTH * project::config::WORLD_WIDTH 
+int main(int argc, char* argv[]) {
+    bool eval_mode = false;
+
+    if (argc > 1 && std::string(argv[1]) == "--eval") {
+        eval_mode = true;
+        std::cout << "Running in EVALUATION mode.\n";
+    }
+
+    const float MAX_DISTANCE = std::sqrt(project::config::WORLD_WIDTH * project::config::WORLD_WIDTH
                                         + project::config::WORLD_HEIGHT * project::config::WORLD_HEIGHT);
 
     project::env::Environment env = project::config::env;
@@ -21,10 +29,19 @@ int main() {
     window.setSize(sf::Vector2u(1000, 1000));
     project::ren::DynamicRectangles manager(env, true);
 
-    TD3Agent agent(project::config::ACTOR_LR, project::config::CRITIC_LR, 
-                    project::config::GAMMA, project::config::TAU, MAX_DISTANCE);
-    ReplayBuffer buffer(300000);
+    TD3Agent agent(project::config::ACTOR_LR, project::config::CRITIC_LR,
+                   project::config::GAMMA, project::config::TAU, MAX_DISTANCE);
 
+    if (std::filesystem::exists("actor.pt") && std::filesystem::exists("critic1.pt") && std::filesystem::exists("critic2.pt")) {
+        agent.load_model("actor.pt", "critic1.pt", "critic2.pt");
+        std::cout << "Model loaded from disk.\n";
+    }
+
+    if (eval_mode) {
+        agent.set_eval_mode(true);
+    }
+
+    ReplayBuffer buffer(300000);
     std::vector<float> episode_rewards;
     int success_count = 0;
     auto start_time = std::chrono::steady_clock::now();
@@ -36,8 +53,7 @@ int main() {
         float ep_reward = 0.0f;
         bool episode_success = false;
 
-        float noise_std = 0.5f * (1.0f - ep / 8000.0f);
-        if (noise_std < 0.05f) noise_std = 0.05f;
+        float noise_std = eval_mode ? 0.0f : std::max(0.05f, 0.5f * (1.0f - ep / 8000.0f));
 
         for (int t = 0; t < project::config::MAX_STEPS; ++t) {
             auto [action_tensor, _] = agent.select_action(state, noise_std);
@@ -85,16 +101,18 @@ int main() {
                         (1.0f / s2.distance_to_goal - 1.0f / s.distance_to_goal);
             }
 
-            buffer.push({
-                state,
-                action_tensor,
-                torch::tensor({reward}, torch::kFloat32),
-                next_state,
-                torch::tensor({done ? 1.0f : 0.0f}, torch::kFloat32)
-            });
+            if (!eval_mode) {
+                buffer.push({
+                    state,
+                    action_tensor,
+                    torch::tensor({reward}, torch::kFloat32),
+                    next_state,
+                    torch::tensor({done ? 1.0f : 0.0f}, torch::kFloat32)
+                });
 
-            if (buffer.size() > project::config::TRAIN_START_SIZE && t % project::config::TRAIN_INTERVAL == 0) {
-                agent.update(buffer, project::config::BATCH_SIZE);
+                if (buffer.size() > project::config::TRAIN_START_SIZE && t % project::config::TRAIN_INTERVAL == 0) {
+                    agent.update(buffer, project::config::BATCH_SIZE);
+                }
             }
 
             state = next_state;
@@ -123,6 +141,11 @@ int main() {
                       << " | Noise: " << noise_std
                       << " | Buffer: " << buffer.size() << std::endl;
         }
+    }
+
+    if (!eval_mode) {
+        std::cout << "Saving model...\n";
+        agent.save_model("actor.pt", "critic1.pt", "critic2.pt");
     }
 
     return 0;

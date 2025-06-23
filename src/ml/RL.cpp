@@ -226,4 +226,33 @@ void TD3Agent::update(ReplayBuffer& buffer, int batch_size) {
     }
 }
 
+void TD3Agent::save_model(const std::string& actor_path, const std::string& critic1_path, const std::string& critic2_path) {
+    torch::save(actor, actor_path);
+    torch::save(critic1, critic1_path);
+    torch::save(critic2, critic2_path);
+}
+
+void TD3Agent::load_model(const std::string& actor_path, const std::string& critic1_path, const std::string& critic2_path) {
+    torch::load(actor, actor_path);
+    torch::load(critic1, critic1_path);
+    torch::load(critic2, critic2_path);
+
+    actor_target->copy_weights(*actor);
+    critic1_target->copy_weights(*critic1);
+    critic2_target->copy_weights(*critic2);
+}
+
+void TD3Agent::set_eval_mode(bool eval) {
+    if (eval) {
+        actor->eval();
+        critic1->eval();
+        critic2->eval();
+    } else {
+        actor->train();
+        critic1->train();
+        critic2->train();
+    }
+}
+
+
 }

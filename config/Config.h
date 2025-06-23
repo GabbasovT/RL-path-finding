@@ -6,7 +6,7 @@ namespace project::config {
 const float WORLD_WIDTH = 100.0f;
 const float WORLD_HEIGHT = 100.0f;
 
-const int EPISODES = 10000;
+const int EPISODES = 250;
 const int MAX_STEPS = 500;
 const int BATCH_SIZE = 512;
 const int LOG_INTERVAL = 50;
@@ -17,7 +17,7 @@ const float TAU = 0.005f;
 const int TRAIN_START_SIZE = 5000;
 const int TRAIN_INTERVAL = 1;
 
-const env::Agent init_agent(WORLD_WIDTH / 2, WORLD_HEIGHT / 2);
+const env::Agent init_agent(WORLD_WIDTH / 2 + 10, WORLD_HEIGHT / 2);
 const env::Goal goal(10.0f, 10.0f, 5.0f, 5.0f);
 
 const std::vector obstacles = {
