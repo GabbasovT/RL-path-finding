@@ -1,6 +1,7 @@
 #ifndef ENV_H
 #define ENV_H
 
+#pragma once
 #include <utility>
 #include <array>
 #include <vector>
