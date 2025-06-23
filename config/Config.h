@@ -17,11 +17,12 @@ const float TAU = 0.005f;
 const int TRAIN_START_SIZE = 5000;
 const int TRAIN_INTERVAL = 1;
 
-const env::Agent init_agent(WORLD_WIDTH / 2 + 10, WORLD_HEIGHT / 2);
+const env::Agent init_agent(WORLD_WIDTH / 2 + 10, WORLD_HEIGHT / 2 + 35);
 const env::Goal goal(10.0f, 10.0f, 5.0f, 5.0f);
 
 const std::vector obstacles = {
-    env::Box(30.0f, 30.0f, 10.0f, 10.0f),
+    env::Box(30.0f, 30.0f, 20.0f, 20.0f),
+    env::Box(30.0f, 50.0f, 20.0f, 60.0f),
     env::Box(70.0f, 70.0f, 15.0f, 15.0f)
 };
 

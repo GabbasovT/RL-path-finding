@@ -3,6 +3,7 @@
 #include <chrono>
 #include <numeric>
 #include <filesystem>
+#include <thread>
 #include "Renderer.hpp"
 
 #include "ml/RL.hpp"
@@ -74,6 +75,9 @@ int main(int argc, char* argv[]) {
                 window.clear();
                 manager.draw(window);
                 window.display();
+                if (eval_mode) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                }
             }
             auto next_state = agent.preprocess_state(s2);
 
