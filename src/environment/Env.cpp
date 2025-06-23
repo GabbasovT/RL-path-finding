@@ -205,13 +205,13 @@ Environment::Environment(std::vector<Box> objects_, Goal goal, Agent agent,
     backup = cur;
 }   
 
-const Goal* Environment::get_goal() {
+Goal* Environment::get_goal() {
     return &cur.goal;
 }
-const Agent* Environment::get_agent() {
+Agent* Environment::get_agent() {
     return &cur.agent;
 }
-const std::vector<Box>* Environment::get_objects() {
+std::vector<Box>* Environment::get_objects() {
     return &cur.objects_;
 }
 std::pair<float, float> Environment::get_w_h() {

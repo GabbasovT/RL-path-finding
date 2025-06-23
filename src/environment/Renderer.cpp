@@ -36,7 +36,7 @@ void DynamicRectangles::addAgentRect(const sf::FloatRect& rect, const sf::Color&
     addRectangle(rect, color, agentRects_);
 }
 
-DynamicRectangles::DynamicRectangles(const project::env::Environment &env, bool addInters) {
+DynamicRectangles::DynamicRectangles(project::env::Environment &env, bool addInters) {
     withInters = addInters;
     width_ = env.get_w_h().first;
     height_ = env.get_w_h().second;
@@ -63,7 +63,7 @@ DynamicRectangles::DynamicRectangles(const project::env::Environment &env, bool 
 
 
 
-void DynamicRectangles::updateAgent(const project::env::Agent* agent) {
+void DynamicRectangles::updateAgent(project::env::Agent* agent) {
     float n_x = agent->get_coords().first;
     float n_y = agent->get_coords().second;
 
@@ -77,7 +77,7 @@ void DynamicRectangles::updateAgent(const project::env::Agent* agent) {
     agentRects_[0][3].position.y = n_y - agentR;
 }
 
-void DynamicRectangles::updateInters(const project::common::State* state) {
+void DynamicRectangles::updateInters(project::common::State* state) {
     if (withInters) {
         for (int i = 0; i < state->obs_intersect.size(); i++) {
             std::pair<float, float> p = state->obs_intersect[i];

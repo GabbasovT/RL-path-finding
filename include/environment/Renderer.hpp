@@ -23,9 +23,9 @@ class DynamicRectangles {
     void addAgentRect(const sf::FloatRect& rect, const sf::Color& color);
     void addDynamicRect(const sf::FloatRect& rect, const sf::Color& color);
 public:
-    DynamicRectangles(const project::env::Environment& env, bool addInters);
-    void updateAgent(const project::env::Agent* agent);
-    void updateInters(const project::common::State* state);
+    DynamicRectangles(project::env::Environment& env, bool addInters);
+    void updateAgent(project::env::Agent* agent);
+    void updateInters(project::common::State* state);
     void draw(sf::RenderTarget& target) const;
 };
 
