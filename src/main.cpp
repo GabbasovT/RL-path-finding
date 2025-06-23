@@ -6,7 +6,7 @@
 
 #include "ml/RL.hpp"
 #include "environment/Env.hpp"
-#include "Config.h"
+#include "../config/Config.h"
 
 using namespace project::common;
 using namespace rl;

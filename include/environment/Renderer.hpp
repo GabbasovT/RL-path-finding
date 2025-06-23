@@ -11,7 +11,7 @@ namespace project::ren{
 class DynamicRectangles {
     bool withInters = false;
     float intersR = 0.25f;
-    float agentR = 1f;
+    float agentR = 1.0f;
     float width_;
     float height_;
     sf::RectangleShape background_;
@@ -23,9 +23,9 @@ class DynamicRectangles {
     void addAgentRect(const sf::FloatRect& rect, const sf::Color& color);
     void addDynamicRect(const sf::FloatRect& rect, const sf::Color& color);
 public:
-    DynamicRectangles(project::env::Environment& env, bool addInters);
-    void updateAgent(project::env::Agent* agent);
-    void updateInters(project::common::State* state);
+    DynamicRectangles(env::Environment& env, bool addInters);
+    void updateAgent(env::Agent* agent);
+    void updateInters(common::State* state);
     void draw(sf::RenderTarget& target) const;
 };
 
